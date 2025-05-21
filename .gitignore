@@ -164,3 +164,6 @@ test/
 /.gradle/
 /pluginIcon.ai
 /pluginIcon.png
+.idea
+*.DS_Store
+.intellijPlatform

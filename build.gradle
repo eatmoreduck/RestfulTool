@@ -2,58 +2,82 @@ plugins {
     // Java support
     id "java"
     // Kotlin support
-    id "org.jetbrains.kotlin.jvm" version "1.4.32"
-    id 'org.jetbrains.intellij' version '0.7.2'
+    id "org.jetbrains.kotlin.jvm" version "1.9.22"
+//    id 'org.jetbrains.intellij' version '2.1.0'
+    id 'org.jetbrains.intellij.platform' version '2.1.0'
 }
-sourceCompatibility = JavaVersion.VERSION_1_10
-targetCompatibility = JavaVersion.VERSION_1_10
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+        vendor = JvmVendorSpec.AZUL  // Zulu属于Azul Systems的JDK发行版
+    }
+}
 
 repositories {
+    // JetBrains官方仓库
+    intellijPlatform {
+        defaultRepositories()
+    }
+//    intellijDependencies()
     mavenCentral()
-    jcenter()
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testImplementation platform('org.junit:junit-bom:5.11.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation('cn.hutool:hutool-all:5.8.22') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    implementation 'log4j:log4j:1.2.17'
+    implementation 'org.dom4j:dom4j:2.1.4'
+    intellijPlatform {
+        intellijIdeaCommunity("2024.1.1")
+        bundledPlugin 'com.intellij.java'
+        bundledPlugin 'com.intellij.java.ide'
+        bundledPlugin 'com.intellij.java-i18n'
+        bundledPlugin 'org.jetbrains.java.decompiler'
+        bundledPlugin 'org.jetbrains.kotlin'
+        bundledPlugin 'org.jetbrains.plugins.yaml'
+        bundledPlugin 'com.intellij.properties'
+        instrumentationTools()
 
-    //noinspection SpellCheckingInspection
-    implementation('cn.hutool:hutool-all:5.3.9')
-
-    implementation('dom4j:dom4j:1.6.1')
+    }
 }
 
-intellij {
-    updateSinceUntilBuild true
-    type 'IC'
-//    version '2020.2'
-//    version 'LATEST-EAP-SNAPSHOT'
-    version '2021.1'
-    pluginName 'RestfulTool'
+intellijPlatform {
 
-    plugins = ['java', 'properties', 'yaml', 'Kotlin']
+    pluginConfiguration {
+        id = "RestfulToolFix"
+        name = "RestfulToolFix"
+        version = "1.0.0"
+        description = "a fixed version of RestfulTool for intellij from 2024"
+        ideaVersion {
+            sinceBuild = "241"
+            untilBuild = "241.*"
+        }
+        changeNotes = """1. update gradle version
+      2. update jdk version 
+      3. fix bug 
+      """.stripIndent()
+    }
+
+
+    // 发布配置迁移到新位置
+    publishing {
+        token = System.getenv("IdeaToken")
+        channels = ['stable']
+    }
+
 }
 
-publishPlugin {
-    // 发布插件，token在`https://plugins.jetbrains.com/author/me/tokens`申请
-    token System.getenv("IdeaToken")
-    // channels 'beta'
-    channels 'stable'
-}
-
-group 'cn.cloud.auto.restful.tool'
-version '1.3.4'
-patchPluginXml {
-    changeNotes """
-        <ul>
-            <li>Add method navigation to view</li>
-            <li>Add Class file display</li>
-            <li>fix bugs</li>
-        </ul>
-    """
-}
-
-//编译JAVA文件时采用UTF-8
-//noinspection GroovyAssignabilityCheck
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
+    options.compilerArgs += ['-parameters']
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }
